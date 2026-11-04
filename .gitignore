@@ -20,5 +20,6 @@ coverage
 .DS_Store
 Thumbs.db
 
-# ===== 前端自成仓库（Next 脚手架自带 .git），由它自己管，不从根仓库再索引一遍 =====
-front-shihai/
+# ===== 前端（Next.js），构建产物与依赖 =====
+front-shihai/.next
+front-shihai/node_modules
