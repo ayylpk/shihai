@@ -1,0 +1,24 @@
+# ===== 依赖 =====
+node_modules
+
+# ===== 构建产物 / 缓存 =====
+dist
+out
+.next
+coverage
+*.tsbuildinfo
+.cache
+.eslintcache
+
+# ===== 环境变量：只留在本机，不进仓库 =====
+.env
+.env.*
+!.env.example
+
+# ===== 编辑器 / 系统 =====
+.idea
+.DS_Store
+Thumbs.db
+
+# ===== 前端自成仓库（Next 脚手架自带 .git），由它自己管，不从根仓库再索引一遍 =====
+front-shihai/

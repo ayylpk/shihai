@@ -1,0 +1,8 @@
+{
+  "name": "shihai",
+  "private": true,
+  "scripts": {
+    "dev": "bun run.ts"
+  },
+  "workspaces": ["back-shihai","ai-shihai","commonTypes"]
+}
