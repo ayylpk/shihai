@@ -1,6 +1,6 @@
-import type { ChatMessage, StoredMessage } from "@shihai/common-types";
-import { redis } from "../db/redis";
-import { config } from "../config";
+import type { StoredMessage } from "@shihai/common-types";
+import { redis } from "./connection";
+import { config } from "../../config";
 
 const key = (tid: string) => `chat:${tid}:messages`;
 const seqKey = (tid: string) => `chat:${tid}:seq`;
@@ -14,8 +14,15 @@ const TTL_SECONDS = config.session.ttlSeconds;
 /**
  * 落一条消息，同时分配序号。
  * 序号必须单调递增且不随 LTRIM 变化，所以走独立计数器，不用 List 下标。
+ *
+ * 入参比 StoredMessage 少了 seq 和 at：这两项由这里生成，调用方给不了。
+ * pad 是可选带进来的——assistant 那条要带上生成它时的心情快照，
+ * 否则事件封口求均值时永远拿不到值，最后落库的情绪只能是 0。
  */
-export async function pushMessage(threadId: string, msg: ChatMessage): Promise<StoredMessage> {
+export async function pushMessage(
+    threadId: string,
+    msg: Omit<StoredMessage, "seq" | "at">,
+): Promise<StoredMessage> {
     const k = key(threadId);
     const seq = await redis.incr(seqKey(threadId));
     const stored: StoredMessage = { ...msg, at: Date.now(), seq };

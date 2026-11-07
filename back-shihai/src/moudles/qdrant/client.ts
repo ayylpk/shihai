@@ -1,5 +1,5 @@
 import { MEMORY_COLLECTION, MEMORY_DISTANCE, MEMORY_VECTOR_SIZE } from "@shihai/common-types";
-import { config } from "../config";
+import { config } from "../../config";
 
 const base = config.qdrantUrl.replace(/\/$/, "");
 const collection = MEMORY_COLLECTION;

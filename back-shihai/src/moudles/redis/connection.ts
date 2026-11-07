@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { config } from "../config";
+import { config } from "../../config";
 import { time } from "console";
 
 export const redis = new Redis(config.redisURL,{
