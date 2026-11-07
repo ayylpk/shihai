@@ -1,3 +1,5 @@
+import type { Pad } from "./brain/emotion";
+
 export type ChatRole = "user" | "assistant" | "system";
 
 // HTTP 封装（get/post/put/del/streamPost）从这里统一导出
@@ -11,12 +13,20 @@ export interface ChatMessage {
   content: string;
 }
 
-// Redis 里真实存的那条消息：比 ChatMessage 多两样
+// Redis 里真实存的那条消息：比 ChatMessage 多三样
 //   seq：单调递增序号，用来做「上次处理到哪」的水位。不能用 List 下标——LTRIM 一裁下标就全变
 //   at ：写入时刻（不是事件发生时刻），相对时间和间隔都靠它算
+//   pad：生成这条回复那一刻的情绪快照
 export interface StoredMessage extends ChatMessage {
   seq: number;
   at: number;
+  /**
+   * 这条消息落下时的 PAD。
+   * 事件封口时要把「这段事件覆盖的几轮」各自的情绪取均值，
+   * 而情绪状态在 Redis 里只有一份「当前值」，不逐轮留存就只剩最后那一下。
+   * 用户消息没有 PAD（那时还没生成回复），所以是可选的。
+   */
+  pad?: Pad;
 }
 
 export interface ChatRequest {

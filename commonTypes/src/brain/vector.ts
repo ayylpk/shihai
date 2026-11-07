@@ -19,3 +19,15 @@ export const MEMORY_COLLECTION = "memories";
 /** bge-m3 实测输出 1024 维 */
 export const MEMORY_VECTOR_SIZE = 1024;
 export const MEMORY_DISTANCE = "Cosine";
+
+export interface MemoryPayload {
+  memoryId: string;
+  type: MemoryType;
+  status: MemoryStatus;
+  eventTs: number | null;
+  topics: string[];
+  /** 不加这俩，Qdrant 命中后分不清是模块还是事件，也不知道该回查哪个模块 */
+  kind: "module" | "event";
+  moduleId: string | null;
+}
+
