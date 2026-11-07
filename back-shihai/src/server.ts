@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config";
-import { runBrain, runBrainStream } from "@shihai/ai";
+import { runBrain, runBrainStream, getEmotionState } from "@shihai/ai";
 import type { ApiEnvelope, ChatMessage, ChatRequest, ChatResponse } from "@shihai/common-types";
 import {
 	pushMessage,
@@ -11,9 +11,9 @@ import {
 	setMark,
 	getLastMessageAt,
 	setLastHandledAt,
+	redis,
 } from "./moudles/redis";
-import { markActive } from "./moudles/session-archive";
-import { redis } from "./db/redis";
+import { markActive } from "./moudles/session";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -166,7 +166,16 @@ app.post<{ Body: ChatRequest }>("/api/chat/stream", async (req, reply) => {
 		// ⑥ 完整回复才入缓存并推水位；水位必须推到这条回复上，
 		//    否则下一批会把 assistant 自己的话当成新消息再评一次
 		if (acc && !ac.signal.aborted) {
-			const saved = await pushMessage(threadId, { role: "assistant", content: acc });
+			// 这一轮结束时的 PAD 快照，跟着回复一起落盘。
+			// 事件封口要靠它求「这一段事件的均值」，不存就只剩当前值一份，
+			// 每个事件的 pad 都会变成 0。
+			// 读不到就留空（JSON 里直接没有这个键），让封口那边跳过这一轮，
+			// 别把编出来的 0 混进均值里
+			const pad = await getEmotionState(threadId)
+				.then((s) => s.pad)
+				.catch(() => undefined);
+
+			const saved = await pushMessage(threadId, { role: "assistant", content: acc, pad });
 
 			await setMark(threadId, saved.seq);
 			await setLastHandledAt(threadId, Date.now());
