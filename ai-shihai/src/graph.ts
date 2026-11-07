@@ -1,11 +1,17 @@
 // ===== 大脑图：LangGraph 状态图 =====
-// State（数据）→ parse 节点 → emotion 节点 → generate 节点 → END
+// State（数据）→ parse 节点 → emotion 节点 → segment 节点 → generate 节点 → END
 import { StateGraph, Annotation } from "@langchain/langgraph";
 import type { BrainStreamEvent, ChatMessage } from "@shihai/common-types";
 import { parseNode } from "./nodes/parse";
 import { emotionNode } from "./nodes/emotion";
+import { segmentNode } from "./nodes/segment";
 import { generateNode } from "./nodes/generate";
 import type { EmotionHint } from "./emotion/state";
+
+// 这两个通道只由 segment 节点写，invoke 时不传，
+// 所以必须给默认值，否则下游读到的是 undefined 而不是 false
+const flag = () =>
+  Annotation<boolean>({ reducer: (_prev, next) => next, default: () => false });
 
 // Annotation：告诉 LangGraph 状态里有哪些通道（channels）
 const BrainStateAnnotation = Annotation.Root({
@@ -14,16 +20,20 @@ const BrainStateAnnotation = Annotation.Root({
   threadId: Annotation<string>(),         // 情绪状态按分区隔离
   parsed: Annotation<string>(),
   hint: Annotation<EmotionHint | null>(), // 此刻的情绪基调
+  eventDone: flag(),                      // 这件事是否收尾
+  moduleDone: flag(),                     // 这次相处是否结束
   reply: Annotation<string>(),
 });
 
 export const brainGraph = new StateGraph(BrainStateAnnotation)
   .addNode("parse", parseNode)
   .addNode("emotion", emotionNode)
+  .addNode("segment", segmentNode)
   .addNode("generate", generateNode)
   .addEdge("__start__", "parse")
   .addEdge("parse", "emotion")
-  .addEdge("emotion", "generate")
+  .addEdge("emotion", "segment")
+  .addEdge("segment", "generate")
   .addEdge("generate", "__end__")
   .compile();
 

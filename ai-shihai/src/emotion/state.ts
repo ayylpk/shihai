@@ -3,7 +3,7 @@
 //           ② 把 PAD 翻译成「此刻该用什么基调说话」，交给 generate。
 // 状态不设 TTL：靠衰减回基线，不靠过期删 key。删了就是失忆，情绪会瞬间归零。
 import type { Appraisal, EmotionState, Pad } from "@shihai/common-types";
-import { redis } from "../../../back-shihai/src/db/redis";
+import { redis } from "../../../back-shihai/src/moudles/redis";
 import { PARAMS, applyAppraisal, decay } from "./calculate";
 
 const key = (threadId: string) => `emotion:${threadId}:pad`;

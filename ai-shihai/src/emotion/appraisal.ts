@@ -5,58 +5,13 @@ import {
 	readSince,
 	getMark,
 	getLastHandledAt,
+	redis,
 } from "../../../back-shihai/src/moudles/redis";
-import { redis } from "../../../back-shihai/src/db/redis";
 import { config } from "../config";
+import { clock, dateTime, gap, rel } from "../format";
 
 // prompt 里带的最近消息条数
 const CONTEXT_LIMIT = 30;
-
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-function clock(ts: number): string {
-	const d = new Date(ts);
-
-	return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-}
-
-function dateTime(ts: number): string {
-	const d = new Date(ts);
-
-	return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${clock(ts)}`;
-}
-
-/** 距离现在多久 */
-function rel(ts: number, now: number): string {
-	const s = Math.max(0, Math.round((now - ts) / 1000));
-
-	if (s < 5) return "刚刚";
-	if (s < 60) return `${s} 秒前`;
-
-	const m = Math.round(s / 60);
-	if (m < 60) return `${m} 分钟前`;
-
-	const h = Math.round(m / 60);
-	if (h < 24) return `${h} 小时前`;
-
-	return `${Math.round(h / 24)} 天前`;
-}
-
-/** 两条消息之间隔了多久 */
-function gap(prev: number, cur: number): string {
-	const s = Math.max(0, Math.round((cur - prev) / 1000));
-
-	if (s < 60) return `${s}s`;
-
-	const m = Math.floor(s / 60);
-	const rs = s % 60;
-	if (m < 60) return rs ? `${m}m${rs}s` : `${m}m`;
-
-	const h = Math.floor(m / 60);
-	const rm = m % 60;
-
-	return rm ? `${h}h${rm}m` : `${h}h`;
-}
 
 const who = (m: StoredMessage) => (m.role === "user" ? "对方" : "你");
 

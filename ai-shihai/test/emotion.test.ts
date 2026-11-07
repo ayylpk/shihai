@@ -15,7 +15,7 @@ import {
 	getEmotionState,
 	initialEmotionState,
 } from "../src/emotion/state";
-import { redis } from "../../back-shihai/src/db/redis";
+import { redis } from "../../back-shihai/src/moudles/redis";
 
 // 填满字段的模板，各用例只覆盖关心的那几项
 const blank: Appraisal = {
