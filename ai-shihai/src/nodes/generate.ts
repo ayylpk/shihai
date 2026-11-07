@@ -60,7 +60,7 @@ async function drain(
  * 情绪基调进 system。
  * 明说「不要说破」，否则模型会把「你现在心情偏亮」当成对话内容念出来。
  */
-function systemPrompt(hint: EmotionHint): string {
+export function systemPrompt(hint: EmotionHint): string {
 	return `你是「识海」。
 ${hint.prompt}
 这是你此刻的内在状态，不要说破，也不要解释自己的情绪，直接说话。`;
