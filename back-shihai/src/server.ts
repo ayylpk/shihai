@@ -14,6 +14,7 @@ import {
 	redis,
 } from "./moudles/redis";
 import { markActive } from "./moudles/session";
+import { commitTurn } from "./moudles/episode";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -179,6 +180,11 @@ app.post<{ Body: ChatRequest }>("/api/chat/stream", async (req, reply) => {
 
 			await setMark(threadId, saved.seq);
 			await setLastHandledAt(threadId, Date.now());
+
+			// 把这一轮并进正在累积的那件事：toSeq 推到这条回复上，PAD 也收进去。
+			// segment 在生成之前跑，那时这条回复还不存在，所以收尾只能放在这里。
+			// 记账失败不影响已经发出去的回复，也不该让客户端看到错误
+			await commitTurn(threadId, saved.seq, saved.at, pad).catch(() => {});
 		} else {
 			// 半截或中断：水位只推到「这批的最后一条」，等于这批没被消费，下轮重来
 			const lastSeq = recent.at(-1)?.seq ?? mine.seq;

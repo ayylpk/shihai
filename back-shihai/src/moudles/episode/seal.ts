@@ -21,6 +21,12 @@ export const EVENT_IDLE_MS = 15 * 60_000;
 
 export const MODULE_IDLE_MS = 90 * 60_000;
 
+/** 一个模块至少攒够这么多件事，才允许被「说再见」直接归档 */
+export const MIN_MODULE_EVENTS = 2;
+
+/** 或者这次相处已经撑了这么久，也够格归档 */
+export const MIN_MODULE_SPAN_MS = 30 * 60_000;
+
 export interface SealDecision{
     sealEvent: boolean;
     closeModule: boolean;
@@ -39,9 +45,21 @@ export function decideSeal(
 ): SealDecision {
 	if (!rt.open) return { sealEvent: false, closeModule: false, reason: null };
 
-	// 模型明确说这次相处结束了：连模块一起关
+	// 模型说这次相处结束了。但「说再见」不等于就此归档：
+	// 只有一件事就关掉，出来的是碎片模块——一条记忆代表不了一次相处，
+	// 以后按模块检索时它既不像模块也不像事件。
+	// 攒够两件事，或者已经聊了半小时，才真的关。
 	if (judge.moduleDone) {
-		return { sealEvent: true, closeModule: true, reason: "moduleEnd" };
+		const enough = rt.events.length + 1 >= MIN_MODULE_EVENTS;
+		const longEnough = now - rt.startedAt >= MIN_MODULE_SPAN_MS;
+
+		if (enough || longEnough) {
+			return { sealEvent: true, closeModule: true, reason: "moduleEnd" };
+		}
+
+		// 不够格关：只切事件，模块接着挂着。
+		// 用户真走了的话，MODULE_IDLE_MS 那条兜底会关掉它，到那时事件也够了
+		return { sealEvent: true, closeModule: false, reason: "moduleEnd" };
 	}
 
 	// 模型说这句话另起一件事：封口上一段，本轮归下一段
@@ -86,8 +104,13 @@ export async function sealOpenEvent(
 	const all = await getMessages(rt.threadId, config.session.activeMax);
 	const slice = all.filter((m) => m.seq >= open.fromSeq && m.seq <= open.toSeq);
 
-	// 逐轮 PAD 求均值。用户消息没有 pad，只取 assistant 那些
-	const pads = slice.map((m) => m.pad).filter((p): p is Pad => p !== undefined);
+	// 优先用逐轮累积的 PAD：封口发生在 generate 之前，区间里可能一条 assistant
+	// 都没有，那时候从消息上扫出来的永远是空数组，均值只能是 0
+	const accumulated = open.pads ?? [];
+	const pads =
+		accumulated.length > 0
+			? accumulated
+			: slice.map((m) => m.pad).filter((p): p is Pad => p !== undefined);
 	const pad = meanPad(pads);
 
 	// id 在封口时定死：Redis 目录和 Mongo 文档用同一个，不用等异步回来再回填

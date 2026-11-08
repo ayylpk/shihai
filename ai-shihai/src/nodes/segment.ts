@@ -40,6 +40,8 @@ function absorb(
 			count: (open?.count ?? 0) + 1,
 			lastAt: at,
 			hint: title || open?.hint || "",
+			// pads 不在这里加：此刻本轮 assistant 还没落库，它的 PAD 要等服务层收束时补
+			pads: open?.pads ?? [],
 		},
 	};
 }
@@ -53,7 +55,7 @@ function start(
 ): EpisodeRuntime {
 	return {
 		...rt,
-		open: { fromSeq: seq, toSeq: seq, count: 1, lastAt: at, hint: title },
+		open: { fromSeq: seq, toSeq: seq, count: 1, lastAt: at, hint: title, pads: [] },
 	};
 }
 
@@ -88,9 +90,18 @@ export async function segmentNode(
 		}
 
 		// 旧模块静默太久：这次相处早就结束了，本轮另起一个模块。
-		// 用户直接下线不告别的情况靠这条兜住，不然模块永远悬着不落库
-		if (rt.open && now - rt.open.lastAt >= MODULE_IDLE_MS) {
-			await closeModule(rt, now);
+		// 用户直接下线不告别的情况靠这条兜住，不然模块永远悬着不落库。
+		// 必须先封口再关模块：open 里攒的那些消息如果直接跟着模块一起关掉，
+		// 既不在 events 目录里、也不会进 sealed 队列，等于凭空消失
+		//
+		// open 可能是空的：上一轮刚封完口，新的一段要等用户下一句话才开始。
+		// 这时候模块本身仍然可能早就该结束，用 startedAt 兜底判断
+		const idleSince = rt.open?.lastAt ?? rt.startedAt;
+
+		if (now - idleSince >= MODULE_IDLE_MS) {
+			const sealed = rt.open ? await sealOpenEvent(rt, "idle", now) : null;
+
+			await closeModule(sealed?.runtime ?? rt, now);
 
 			const fresh = newRuntime(
 				threadId,
@@ -107,41 +118,38 @@ export async function segmentNode(
 		const judgement = await requestSegment(threadId, rt.open);
 		const decision = decideSeal(rt, judgement, now);
 
-		// 这次相处整体结束：本轮是最后一块，并进去再封口，然后关模块
-		if (decision.closeModule) {
-			const merged = absorb(rt, latest.seq, latest.at, judgement.eventTitle);
-			const sealed = await sealOpenEvent(
-				merged,
-				decision.reason ?? "moduleEnd",
-				now,
-			);
+		// 只做判断，不执行封口。
+		// 此刻本轮的 assistant 还没生成，现在封口会把 AI 自己那句话漏在区间外，
+		// 事件也就拿不到这一轮的 PAD。真正执行交给服务层：
+		// pushMessage(assistant) 之后调 commitTurn，由它按 pendingSeal 落地。
 
-			if (sealed) await closeModule(sealed.runtime, now);
-
-			return { eventDone: judgement.eventDone, moduleDone: judgement.moduleDone };
-		}
-
-		// 另起一件事：封口上一段（不含本轮），本轮归新的一段
-		if (decision.sealEvent) {
-			const sealed = await sealOpenEvent(
-				rt,
-				decision.reason ?? "sceneShift",
-				now,
-			);
-
-			if (sealed) {
-				await writeRuntime(
-					start(sealed.runtime, latest.seq, latest.at, judgement.eventTitle),
-				);
-			}
+		// 本轮另起一件事：open 保持原样（不含本轮），等 commitTurn 封旧的再开新的
+		if (decision.sealEvent && !decision.closeModule) {
+			await writeRuntime({
+				...rt,
+				pendingSeal: {
+					reason: decision.reason ?? "sceneShift",
+					title: judgement.eventTitle,
+					closeModule: false,
+				},
+			});
 
 			return { eventDone: judgement.eventDone, moduleDone: judgement.moduleDone };
 		}
 
-		// 还是同一件事：并进去
-		await writeRuntime(absorb(rt, latest.seq, latest.at, judgement.eventTitle));
+		// 其余情况本轮都算进当前这件事：拿不准要不要切，或者这是相处的最后一块
+		await writeRuntime({
+			...absorb(rt, latest.seq, latest.at, judgement.eventTitle),
+			pendingSeal: decision.closeModule
+				? {
+						reason: decision.reason ?? "moduleEnd",
+						title: judgement.eventTitle,
+						closeModule: true,
+					}
+				: null,
+		});
 
-		return { eventDone: false, moduleDone: false };
+		return { eventDone: judgement.eventDone, moduleDone: judgement.moduleDone };
 	} catch (err) {
 		// 判断失败就不切。切碎了很难合回来，宁可晚切
 		console.error("[segment]", err instanceof Error ? err.message : err);

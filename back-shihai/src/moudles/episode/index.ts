@@ -10,4 +10,5 @@ export {
 } from "./seal";
 
 export type { SealDecision } from "./seal";
-export { saveEvent, saveModule, loadModule, setVectorStatus, nextSequence } from "./store";
+export { saveEvent, saveModule, loadModule, setVectorStatus, nextSequence, loadUnindexed } from "./store";
+export { commitTurn } from "./turn";

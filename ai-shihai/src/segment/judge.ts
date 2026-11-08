@@ -53,7 +53,7 @@ function line(m: StoredMessage, now: number, prevAt?: number): string {
 
 	if (prevAt !== undefined) parts.push(`，间隔 ${gap(prevAt, m.at)}`);
 
-	return `${parts.join(" ")}）：${m.content}`;
+	return `${parts.join(" ")}): ${m.content}`;
 }
 
 /**
@@ -71,7 +71,7 @@ export async function buildSegmentPrompt(
 	const lines = msgs.map((m, i) => line(m, now, msgs[i - 1]?.at)).join("\n");
 
 	const ongoing = open
-		? `「${open.hint || "（还没概括出来）"}」，已经累积 ${open.count} 条消息`
+		? `「${open.hint || "（还没概括出来）"}」，已经聊了 ${open.count} 轮`
 		: "（还没有正在进行的这件事，这是第一次判断）";
 
 	const sinceLast = lastHandled

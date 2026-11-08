@@ -169,6 +169,14 @@ export interface OpenEvent {
 	lastAt: number;
 	/** 随对话滚动更新的一句话，封口前就能知道「现在在干嘛」 */
 	hint: string;
+	/**
+	 * 这件事覆盖的各轮 PAD，逐轮累积，封口时直接求均值。
+	 *
+	 * 不能只在封口那一刻扫 messages 去求：segment 排在 generate 之前，
+	 * 封口时本轮的 assistant 还没落库，区间里往往一条 pad 都没有，
+	 * 均值会算成 0,0,0，整件事的情绪就废了。
+	 */
+	pads: Pad[];
 }
 
 /** `episode:<tid>:current` 里存的东西 */
@@ -190,6 +198,23 @@ export interface EpisodeRuntime {
 
 	/** 刚封口完、还没来新消息时为 null */
 	open: OpenEvent | null;
+
+	/**
+	 * 已判定要封口、但还没执行的标记。
+	 *
+	 * 为什么要拖一步：判断这件事有没有结束的是 segment 节点，它排在 generate 之前，
+	 * 那时本轮的 assistant 还没生成，立刻封口会把 AI 自己那句话漏在区间外。
+	 * 所以 segment 只登记，等回复落库后由服务层调 commitTurn 真正执行。
+	 */
+	pendingSeal: {
+		reason: SealedEvent["reason"];
+		title: string;
+		/**
+		 * true  = 这次相处整体结束，本轮算最后一块，并进去再封
+		 * false = 本轮开启了一件新的事，旧的那段不含本轮
+		 */
+		closeModule: boolean;
+	} | null;
 
 	mood: MoodAggregate;
 }
@@ -226,4 +251,10 @@ export interface SealedEvent {
 	reason: "idle" | "sceneShift" | "moduleEnd" | "manual";
 	/** 原文快照。不靠回头读 List——它会被 LTRIM 裁掉 */
 	messages: StoredMessage[];
+	/**
+	 * 抽取失败重试次数。
+	 * 只给 worker 做毒丸保护用，不参与任何业务语义——
+	 * 没有它就只能无限重试，一条坏数据能把整个队列堵死。
+	 */
+	attempts?: number;
 }
