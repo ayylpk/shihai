@@ -29,6 +29,7 @@ import {
 	setLastHandledAt,
 	redis,
 } from "../../back-shihai/src/moudles/redis";
+import { commitTurn } from "../../back-shihai/src/moudles/episode";
 
 // ===== 输出样式 =====
 
@@ -266,6 +267,9 @@ async function turn(text: string): Promise<void> {
 
 		await setMark(THREAD, saved.seq);
 		await setLastHandledAt(THREAD, Date.now());
+
+		// 和 server.ts 一致：这一轮要并进正在累积的那件事（toSeq + PAD）
+		await commitTurn(THREAD, saved.seq, saved.at, pad).catch(() => {});
 	} else {
 		const lastSeq = recent.at(-1)?.seq ?? mine.seq;
 
