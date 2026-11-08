@@ -46,13 +46,17 @@ export const EXTRACT_SCHEMA = {
 			required: ["content", "feeling", "thoughts"],
 			additionalProperties: false,
 		},
-		keywords: { type: "array", items: { type: "string" } },
-		topics: { type: "array", items: { type: "string" } },
+		keywords: { type: "array", items: { type: "string", minLength: 2 }, maxItems: 6 },
+		topics: { type: "array", items: { type: "string", minLength: 2 }, maxItems: 3 },
 		entities: {
 			type: "array",
+			maxItems: 8,
 			items: {
 				type: "object",
-				properties: { name: { type: "string" }, kind: { type: "string" } },
+				properties: {
+					name: { type: "string", minLength: 1 },
+					kind: { type: "string", enum: ["person", "place", "thing", "org"] },
+				},
 				required: ["name", "kind"],
 				additionalProperties: false,
 			},
@@ -98,11 +102,18 @@ content  发生了什么
   客观、按时间顺序。谁说了什么、做了什么、结果如何。
   只写能观察到的：说出口的话、做出来的动作、确实发生的事。
   不写你的评价，不写你的猜测。
+  **只写这一段对话里真的出现过的东西。**没提到的地点、天气、动作、时间，
+  一律不许补——记忆里混进编造的情节，比记得粗糟糕得多。
 
 feeling  当时的感觉
   身体上的直接体验 + 情绪状态。要具体，不要概括。
-  「等的时候手指一直抠包带，后来手有点凉」——可以。
+  「一直低头看鞋尖，站起来的时候腿有点麻」——可以。
   「我有点不开心」——不行，这是结论，不是感受。
+  **只写你自己身上发生的感觉。**对方的动作、表情、喉结、眼尾——那些是
+  content 里的观察，不是你的感受。写成别人的身体，视角就错了。
+  要贴合这一段本身发生的事，别把别处的感受搬过来。
+  **身体感受可以具体，但不许凭空加道具。**这一段里没出现过的东西
+  （气味、口罩、饮料、手机屏幕、饰品）不要写进来。
 
 thoughts  当时脑子里在想什么
   真实的内心活动，**包括说不出口的那部分**。这是最重要的一栏。
@@ -117,20 +128,47 @@ thoughts  当时脑子里在想什么
 · 对对方的猜测和判断，哪怕可能猜错
 · 替自己辩解：「我这样也不算过分吧」
 
-正例
-content：他比约好的时间晚了四十分钟，到了说路上堵车。我说没关系，让他先坐。
-feeling：等的时候一直在抠包带，手指有点凉。他进来那一下，反而平静了。
-thoughts：那条路周日下午根本不堵。他大概是不想来，又临时改主意了。我没问，因为一问就得吵，我今天没力气吵。说没关系的时候是真的想算了，不是装的。
+内心活动可以自由，但**不许编对方的行为**。
+「他大概是不想来」是推测，可以；「他递奶茶时手在抖」是事实，
+这一段没有就得删——编出来的动作会变成以后坚信的记忆。
+
+正例（注意它和你要写的这一件事毫无关系，只学结构）
+content：她说周六来拿那本《长夜》，结果到周日下午才来。书一直放在门口柜子上，我擦了两遍。
+feeling：等着的时候手机拿起又放下，想问她一句，又觉得没必要。她进门那一下，反倒松了口气。
+thoughts：其实我可以先问的。不问是怕显得我一直在等，好像我这边没别的事。她说这周太忙，我信一半——真忙的人一般不把日子说得那么准。书递过去的时候我想说的是别的，最后只说了句「拿好」。
 
 反例
 thoughts：我有点不高兴。 ← 这是 feeling 的复述，没有内心活动，也没有具体在盘算什么，等于没写。
 
 【summary 是以后检索的唯一入口】
 一句话说清「谁 + 做了什么 + 结果」，不超过 30 字，写成人话。
-以后你想起「那次他迟到」，靠的就是这句话。写成诗就搜不到了。
+以后你想起「那次在路边摊吃夜宵」，靠的就是这句话。写成诗就搜不到了。
+**这一段是新的一段，写出它自己的样子。**不要套用前面已有事件的说法——
+八件事都写成「他迟到…」，以后就一件也分不出来了。
 
 【title】
-这件事的短名字，不超过 10 字，像目录里的一行：「碰面迟到」「路边摊吃夜宵」。
+这件事的短名字，不超过 10 字，像目录里的一行：「路边摊吃夜宵」「摩天轮上告白」。
+超过 10 字的不是名字，是把经过抄了一遍——那是 content 的活。
+反例：「对方指着水母发光，我回应光好看，对方抓袖子说隧道黑」← 太长，也不是名字
+同样要能和其他事区分开。
+
+【keywords：以后靠它想起这件事的词】
+4 到 6 个词，每个 2 到 6 个字，是这件事里**具体的东西**——
+地点、物件、动作、称呼、当时说出口的某个词。
+「摩天轮」「水族馆门票」「包带」「他说堵车」可以。
+不要写抽象名词（「情感」「沟通」「关系」），不要写分类（「约会」「日常」），
+更不要把字段名当词填进来（「summary」「appraisal」「title」不是关键词）。
+
+【topics：这件事属于哪一类，最多 3 个】
+用 2 到 5 个字的大类词，方便以后按类翻找。
+「告白」「争吵」「告别」「第一次见面」「日常闲聊」可以。
+拿不准就给一个最接近的，不要为了凑满而编。
+
+【entities：这件事里出现的人和地方】
+只写这一段对话里**真的出现过**的，没提到的人不要补。
+kind 只能填 person / place / thing / org。
+name 用人话：「她」「电影院」「那家面馆」，不要写「对方」「场景」「地点」这种占位词。
+一个都没有就给空数组。
 
 【overviewPatch：模块概述的滚动更新】
 用两句话说清「这次相处到目前为止发生了什么、整体是什么氛围」。
@@ -168,17 +206,100 @@ ${dateTime(now)}
 标题：${ctx.title || "（还没起名）"}
 概述：${ctx.summary || "（还没有概述，这是第一件事）"}
 
-【之前已经发生的事】旧的在上
-${earlier}
-
 【这一段对话】共 ${sealed.messages.length} 条，${sealed.fromSeq}–${sealed.toSeq}
 ${lines}
+
+【之前已经发生的事】旧的在上
+${earlier}
+这些**已经记过了**。它们是用来给你上下文的，不是让你照着写——
+你写的是上面这一段新的事，别把它们的说法再套一遍。
 
 只输出一个 JSON 对象，字段严格按给定 schema，不要多余文字。`;
 }
 
 interface ChatCompletion {
 	choices?: { message?: { content?: string } }[];
+}
+
+// schema 里所有字段名。模型遇到「required 但没讲清楚」的字段时，
+// 会把兄弟字段名当内容填进去（实测出现过 topics: ["appraisal"]），
+// 这类污染用 pattern 拦不住——它不长成「字段名:值」的样子。
+const FIELD_NAMES = new Set([
+	"moduletitle", "overviewpatch", "title", "summary", "narrative",
+	"content", "feeling", "thoughts", "keywords", "keyword", "topics",
+	"topic", "entities", "entity", "importance", "relevance", "novelty",
+	"appraisal", "name", "kind", "null", "none", "undefined", "n/a",
+]);
+
+/** 没有实际信息量的占位词 */
+const PLACEHOLDERS = new Set([
+	"对方", "场景", "地点", "事情", "内容", "未知", "暂无", "空", "无", "其他",
+]);
+
+function cleanList(value: unknown, max: number): string[] {
+	if (!Array.isArray(value)) return [];
+
+	const out: string[] = [];
+
+	for (const item of value) {
+		if (typeof item !== "string") continue;
+
+		const s = item.trim();
+
+		// 中文一个词至少两个字；超过 12 个字就不是标签而是句子了
+		if (s.length < 2 || s.length > 12) continue;
+		if (FIELD_NAMES.has(s.toLowerCase())) continue;
+		if (PLACEHOLDERS.has(s)) continue;
+		if (out.includes(s)) continue;
+
+		out.push(s);
+
+		if (out.length >= max) break;
+	}
+
+	return out;
+}
+
+const ENTITY_KINDS = new Set(["person", "place", "thing", "org"]);
+
+function cleanEntities(value: unknown): MemoryEntity[] {
+	if (!Array.isArray(value)) return [];
+
+	const out: MemoryEntity[] = [];
+
+	for (const item of value) {
+		if (!item || typeof item !== "object") continue;
+
+		const raw = item as Partial<MemoryEntity>;
+		const name = typeof raw.name === "string" ? raw.name.trim() : "";
+		const kind = typeof raw.kind === "string" ? raw.kind.trim().toLowerCase() : "";
+
+		if (!name || name.length > 20) continue;
+		if (PLACEHOLDERS.has(name) || FIELD_NAMES.has(name.toLowerCase())) continue;
+		if (!ENTITY_KINDS.has(kind)) continue;
+
+		out.push({ name, kind });
+
+		if (out.length >= 8) break;
+	}
+
+	return out;
+}
+
+/**
+ * 抽取结果落库前的清洗。
+ * 只清洗「模型容易填空」的字段，正文（narrative / summary）不改——
+ * 那是记忆本身，宁可留着难看也不该被规则改写。
+ *
+ * 注意 title 只用于提示模型聚焦，不进 EventDoc（档案里的标题其实是 summary）。
+ */
+export function sanitizeExtract(ex: ExtractResult): ExtractResult {
+	return {
+		...ex,
+		keywords: cleanList(ex.keywords, 6),
+		topics: cleanList(ex.topics, 3),
+		entities: cleanEntities(ex.entities),
+	};
 }
 
 export async function extractEvent(
@@ -204,5 +325,5 @@ export async function extractEvent(
 
 	if (!raw) throw new Error("抽取返回为空");
 
-	return JSON.parse(raw) as ExtractResult;
+	return sanitizeExtract(JSON.parse(raw) as ExtractResult);
 }
