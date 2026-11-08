@@ -16,6 +16,16 @@ function withTimeout(timeoutMs: number, signal?: AbortSignal): AbortSignal {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
+// 不许复用连接。
+//
+// Bun 1.3.x 的 fetch 连接池按 IP 建 key，不区分端口：先打过 127.0.0.1:6333
+// （Qdrant）之后，发往 127.0.0.1:11434（ollama）的请求会复用那条连接，
+// 结果被投递到 Qdrant 上，拿回 Go 风格的 `404 page not found`。
+// 换 127.0.0.1 / localhost 不同写法没用（解析后是同一个 IP），只能强制新建。
+//
+// 本项目的请求全部打本地 ollama，多一次握手的开销可以忽略。
+const FRESH: Record<string, string> = { Connection: "close" };
+
 // 总函数：所有请求都走这里
 export async function request<T = unknown>(
   method: string,
@@ -28,6 +38,7 @@ export async function request<T = unknown>(
     method, // ← method 是变量输入
     headers: {
       "Content-Type": "application/json",
+      ...FRESH,
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -82,6 +93,7 @@ export async function* streamPost(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...FRESH,
       ...headers,
     },
     body: JSON.stringify(body),
