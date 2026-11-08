@@ -44,3 +44,24 @@ export async function setVectorStatus(
 export async function nextSequence(moduleId: string): Promise<number> {
 	return (await events()).countDocuments({ moduleId });
 }
+
+/**
+ * 捞出向量没写成功的事件，给补偿扫描用。
+ *
+ * 只认两种：明确 failed 的，和停了太久还 pending 的。
+ * 不捞「刚落库的 pending」——那正在正常写入流程里，捞了只会重复 embed。
+ * 阈值取 5 分钟，比一次 embed 超时（20 秒）宽得多，不会误伤。
+ */
+export async function loadUnindexed(limit: number): Promise<EventDoc[]> {
+	const cutoff = new Date(Date.now() - 5 * 60_000);
+
+	return (await events())
+		.find({
+			$or: [
+				{ "vector.status": "failed" },
+				{ "vector.status": "pending", createdAt: { $lt: cutoff } },
+			],
+		})
+		.limit(limit)
+		.toArray();
+}
